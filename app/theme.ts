@@ -5,9 +5,9 @@ const theme = {
   palette: {
     colorblind: false,
     primary: {
-      light: '#CCCAE3',
-      main: '#544D93',
-      dark: '#453F78',
+      light: '#6666ff',
+      main: '#3d59ab',
+      dark: '#0047ab',
     },
     secondary: {
       light: '#F07F9D',
