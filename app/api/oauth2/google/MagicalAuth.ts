@@ -1,8 +1,6 @@
 import { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import bcrypt from 'bcrypt';
-import sgMail from '@sendgrid/mail';
 import { totp } from 'otplib';
 import axios from 'axios';
 
@@ -21,6 +19,10 @@ interface RegisterData {
   firstName: string;
   lastName: string;
 }
+
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 class MagicalAuth {
   private link: string;
@@ -82,50 +84,6 @@ class MagicalAuth {
       },
     });
     return failedLogins;
-  }
-
-  async sendMagicLink(
-    ipAddress: string,
-    login: LoginData,
-    referrer: string | null = null,
-    sendLink: boolean = true,
-  ): Promise<string> {
-    this.email = login.email.toLowerCase();
-    const user = await prisma.user.findUnique({ where: { email: this.email } });
-    if (!user) {
-      throw new Error('User not found');
-    }
-    if (!totp.verify({ token: login.token, secret: user.mfaToken })) {
-      await this.addFailedLogin(ipAddress);
-      throw new Error('Invalid MFA token. Please try again.');
-    }
-    this.token = jwt.sign(
-      {
-        sub: user.id,
-        email: this.email,
-        admin: user.admin,
-        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
-      },
-      this.encryptionKey,
-    );
-    const encodedToken = encodeURIComponent(this.token);
-    if (referrer) {
-      this.link = referrer;
-    }
-    const magicLink = `${this.link}?token=${encodedToken}`;
-    if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL && sendLink) {
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      const msg = {
-        to: this.email,
-        from: process.env.SENDGRID_FROM_EMAIL,
-        subject: 'Magic Link',
-        html: `<a href='${magicLink}'>Click here to log in</a>`,
-      };
-      await sgMail.send(msg);
-      return `A login link has been sent to ${this.email}, please check your email and click the link to log in. The link will expire in 24 hours.`;
-    } else {
-      return magicLink;
-    }
   }
 
   async login(ipAddress: string): Promise<User> {
