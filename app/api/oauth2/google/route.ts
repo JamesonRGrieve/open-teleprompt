@@ -1,28 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import MagicalAuth from './MagicalAuth'; // Adjust the import path as needed
+import GoogleOAuth from './GoogleOAuth';
 
 export async function POST(request: NextRequest) {
-  const provider = request.nextUrl.pathname.split('/').pop()?.toLowerCase();
-
-  if (!provider) {
-    return NextResponse.json({ error: 'Provider not specified' }, { status: 400 });
-  }
-
   try {
-    const data = await request.json();
-    const auth = new MagicalAuth();
+    const { code } = await request.json();
+    const redirectUri = process.env.REDIRECT_URI || '';
 
-    const magic_link = auth.sso({
-      provider,
-      code: data.code,
-      ip_address: request.ip,
-      referrer: data.referrer || process.env.MAGIC_LINK_URL,
-    });
+    const auth = new GoogleOAuth();
+    const result = await auth.handleCallback(code, redirectUri);
 
     return NextResponse.json({
-      detail: magic_link,
-      email: auth.email,
-      token: auth.token,
+      detail: result.magic_link,
+      email: result.email,
+      token: result.token,
     });
   } catch (error) {
     console.error('OAuth login error:', error);

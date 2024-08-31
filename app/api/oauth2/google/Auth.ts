@@ -6,8 +6,7 @@ import axios from 'axios';
 
 // Assume these are defined elsewhere in your project
 import { User, FailedLogin, UserOAuth, OAuthProvider } from './models';
-import { prisma } from './prismaClient';
-import { getSsoProvider } from './OAuth2Providers';
+import googleProvider from './GoogleProvider';
 
 interface LoginData {
   email: string;
@@ -32,7 +31,7 @@ class MagicalAuth {
 
   constructor(token: string | null = null) {
     const encryptionKey = process.env.ENCRYPTION_SECRET || '';
-    this.link = process.env.MAGIC_LINK_URL || '';
+    this.link = process.env.OAUTH_REDIRECT_URI || '';
     this.encryptionKey = `${encryptionKey}${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
     this.token = token ? decodeURIComponent(token).replace(/^(Bearer\s|bearer\s)/, '') : null;
     this.email = null;
@@ -164,38 +163,49 @@ class MagicalAuth {
     });
     return 'User deleted successfully';
   }
-
   async sso(provider: string, code: string, ipAddress: string, referrer: string | null = null): Promise<string> {
     if (!referrer) {
-      referrer = process.env.MAGIC_LINK_URL || '';
+      referrer = process.env.OAUTH_REDIRECT_URI || '';
     }
     provider = provider.toLowerCase();
-    const ssoData = await getSsoProvider(provider, code, referrer);
-    if (!ssoData || !ssoData.accessToken) {
+
+    let ssoData;
+    if (provider === 'google') {
+      ssoData = await googleSSO(code, referrer);
+    } else {
+      // Handle other providers or throw an error
+      throw new Error(`Unsupported SSO provider: ${provider}`);
+    }
+
+    if (!ssoData) {
       throw new Error(`Failed to get user data from ${provider.charAt(0).toUpperCase() + provider.slice(1)}.`);
     }
-    const { userInfo, accessToken, refreshToken } = ssoData;
+
+    const userInfo = await ssoData.getUserInfo();
     this.email = userInfo.email.toLowerCase();
+
     let user = await prisma.user.findUnique({ where: { email: this.email } });
     if (!user) {
-      const registerData: RegisterData = {
+      const registerData = {
         email: this.email,
-        firstName: userInfo.firstName || '',
-        lastName: userInfo.lastName || '',
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
       };
       const mfaToken = await this.register(registerData);
       user = await prisma.user.findUnique({ where: { email: this.email } });
       if (!user) throw new Error('Failed to create user');
+
       let oauthProvider = await prisma.oAuthProvider.findUnique({ where: { name: provider } });
       if (!oauthProvider) {
         oauthProvider = await prisma.oAuthProvider.create({ data: { name: provider } });
       }
+
       await prisma.userOAuth.create({
         data: {
           userId: user.id,
           providerId: oauthProvider.id,
-          accessToken,
-          refreshToken,
+          accessToken: ssoData.accessToken,
+          refreshToken: ssoData.refreshToken,
         },
       });
     } else {
@@ -203,11 +213,15 @@ class MagicalAuth {
       if (userOAuth) {
         await prisma.userOAuth.update({
           where: { id: userOAuth.id },
-          data: { accessToken, refreshToken },
+          data: {
+            accessToken: ssoData.accessToken,
+            refreshToken: ssoData.refreshToken,
+          },
         });
       }
     }
-    const login: LoginData = { email: this.email, token: totp.generate(user.mfaToken) };
+
+    const login = { email: this.email, token: totp.generate(user.mfaToken) };
     return this.sendMagicLink(ipAddress, login, referrer, false);
   }
 

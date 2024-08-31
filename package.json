@@ -48,6 +48,7 @@
     "clipboard-copy": "^4.0.1",
     "cookies-next": "^4.2.1",
     "jrgcomponents": "^0.0.178",
+    "jsonwebtoken": "^9.0.2",
     "md5": "^2.3.0",
     "mermaid": "^10.9.1",
     "next": "^14.2.5",
