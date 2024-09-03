@@ -41,7 +41,7 @@ export class GoogleOAuth {
     this.clientId = process.env.GOOGLE_CLIENT_ID || '';
     this.clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
     this.jwtSecret = process.env.JWT_SECRET || '';
-    this.magicLinkUrl = process.env.OAUTH_REDIRECT_URI || '';
+    this.magicLinkUrl = process.env.AUTH_WEB + '/close/google' || '';
   }
 
   private async getTokens(code: string, redirectUri: string) {
@@ -51,10 +51,10 @@ export class GoogleOAuth {
       try {
         response = await axios
           .post('https://accounts.google.com/o/oauth2/token', {
-            code,
+            code: code.replaceAll('%2F', '/').replaceAll('%3D', '=').replaceAll('%3F', '?').replaceAll('%3D', '='),
             client_id: this.clientId,
             client_secret: this.clientSecret,
-            redirect_uri: 'http://localhost:6969/user/close/google',
+            redirect_uri: process.env.AUTH_WEB + '/close/google',
             grant_type: 'authorization_code',
           })
           .catch((error) => error.response);
@@ -76,6 +76,10 @@ export class GoogleOAuth {
       } else */
       if (response.status !== 200) {
         console.error("Failed to get authorization_code from Google's OAuth2 API.");
+        console.log(response.data);
+        doneTrying = true;
+      } else {
+        console.log('Done getting authorization_code: ', response.data);
         doneTrying = true;
       }
     }
@@ -84,10 +88,17 @@ export class GoogleOAuth {
   }
 
   private async getUserInfo(accessToken: string): Promise<UserInfo> {
-    const response = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    return response.data;
+    const response = await axios
+      .get('https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      .catch((error) => error.response);
+    console.log('Got User Data: ', response.data);
+    return {
+      given_name: response.data.names[0].givenName,
+      family_name: response.data.names[0].familyName,
+      email: response.data.emailAddresses[0].value,
+    };
   }
 
   private generateJWT(userId: string): string {
@@ -100,6 +111,7 @@ export class GoogleOAuth {
 
   async handleCallback(code: string, redirectUri: string) {
     const { access_token, refresh_token } = await this.getTokens(code, redirectUri);
+    console.log('Got Tokens: ', access_token, refresh_token);
     const userInfo = await this.getUserInfo(access_token);
     const email = userInfo.email.toLowerCase().trim();
     const { id: userID } = await prisma.user.upsert({

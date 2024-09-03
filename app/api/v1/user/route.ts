@@ -11,14 +11,11 @@ interface JwtPayload {
 export async function GET(request: NextRequest) {
   try {
     // Extract the authorization header
-    const authHeader = request.headers.get('authorization');
+    const authToken = request.headers.get('authorization').replaceAll('Bearer ', '');
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing or invalid authorization header' }, { status: 401 });
+    if (!authToken) {
+      return NextResponse.json({ error: 'Missing authorization header.' }, { status: 401 });
     }
-
-    // Extract the token
-    const token = authHeader.split(' ')[1];
 
     // Verify the JWT
     const jwtSecret = process.env.JWT_SECRET;
@@ -26,7 +23,7 @@ export async function GET(request: NextRequest) {
       throw new Error('JWT_SECRET is not set in environment variables');
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+    const decoded = jwt.verify(authToken, jwtSecret) as JwtPayload;
 
     // Fetch user information from the database
     const user = await prisma.user.findUnique({
