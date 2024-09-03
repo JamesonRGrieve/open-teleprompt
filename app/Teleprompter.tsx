@@ -2,12 +2,13 @@
 import { Box, IconButton, Typography } from '@mui/material';
 import axios from 'axios';
 import { getCookie } from 'cookies-next';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
 import { ArrowBack } from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
+
 export type TeleprompterProps = {
   googleDoc: GoogleDoc;
   setSelectedDocument: any;
@@ -19,11 +20,8 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const [mainWindow, setMainWindow] = useState<Boolean>(false);
 
   const handleInputScroll = useCallback(() => {
-    console.log('Main Window?: ', mainWindow);
     if (mainWindow) {
       const scrollPosition = mainRef.current.scrollTop;
-      console.log(mainRef.current);
-      console.log('Scrolled to ', scrollPosition);
       fetch('/api/v1/scroll', {
         method: 'POST',
         headers: {
@@ -33,28 +31,26 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         body: JSON.stringify({ position: scrollPosition }),
       });
     }
-  }, [mainWindow, mainRef]);
+  }, [mainWindow]);
+
   const handleReceivedScroll = useCallback(
     (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log(mainRef.current);
-      console.log('Received update: ', data);
-      if (data === true || data === false) {
-        console.log('Setting main window to ', data);
-        setMainWindow(data);
+      if (typeof data === 'boolean') {
+        setMainWindow(() => data); // Use functional update
       } else {
-        console.log('Setting scroll position to ', Number(data.position));
         mainRef.current.scrollTo(0, Number(data.position));
         if (data.selectedDocument) {
           setSelectedDocument(data.selectedDocument);
         }
       }
     },
-    [mainRef, setSelectedDocument, setMainWindow],
+    [setSelectedDocument],
   );
+
   useEffect(() => {
     mainRef.current = document.querySelector('main');
-    console.log(mainRef.current);
+
     mainRef.current.addEventListener('scroll', handleInputScroll);
     eventSourceRef.current = new EventSourcePolyfill('/api/v1/scroll', {
       headers: {
@@ -70,7 +66,8 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         eventSourceRef.current.close();
       }
     };
-  }, []);
+  }, [handleInputScroll, handleReceivedScroll]);
+
   const { data, isLoading, error } = useSWR(`/docs/${googleDoc.id}`, async () => {
     return googleDoc
       ? (
@@ -82,6 +79,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         ).data
       : null;
   });
+
   return (
     <Box px='14rem'>
       <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
