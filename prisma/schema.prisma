@@ -14,39 +14,14 @@ generator client {
 }
 
 model User {
-  id            String        @id @default(uuid())
-  email         String        @unique
-  firstName     String?
-  lastName      String?
-  mfaToken      String
-  admin         Boolean       @default(false)
-  isActive      Boolean       @default(true)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  failedLogins  FailedLogin[]
-  oauthAccounts UserOAuth[]
-}
-
-model FailedLogin {
-  id        String   @id @default(uuid())
-  userId    String
-  ipAddress String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model OAuthProvider {
-  id    String      @id @default(uuid())
-  name  String      @unique
-  users UserOAuth[]
-}
-
-model UserOAuth {
-  id           String        @id @default(uuid())
-  userId       String
-  providerId   String
+  id           String   @id @default(uuid())
+  email        String   @unique
+  firstName    String?
+  lastName     String?
   accessToken  String
   refreshToken String?
-  user         User          @relation(fields: [userId], references: [id])
-  provider     OAuthProvider @relation(fields: [providerId], references: [id])
+  admin        Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
