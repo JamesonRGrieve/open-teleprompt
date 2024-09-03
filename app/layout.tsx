@@ -50,7 +50,6 @@ export default function RootLayout({ children }: { children: ReactNode }): React
         >
           {children}
         </AppWrapper>
-        <ScrollSync />
       </body>
     </html>
   );

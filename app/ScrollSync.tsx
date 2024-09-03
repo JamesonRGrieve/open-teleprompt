@@ -1,31 +1,38 @@
 'use client';
 
-import { useEffect } from 'react';
-import io from 'socket.io-client';
+import { useEffect, useRef } from 'react';
 
 export function ScrollSync() {
+  const eventSourceRef = useRef<EventSource | null>(null);
+
   useEffect(() => {
-    const socket = io();
+    eventSourceRef.current = new EventSource('/api/v1/scroll');
 
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      socket.emit('scroll', { position: scrollPosition });
+      fetch('/api/v1/scroll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ position: scrollPosition }),
+      });
     };
 
-    const handleReceivedScroll = (data) => {
+    const handleReceivedScroll = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
       window.scrollTo(0, data.position);
     };
 
     window.addEventListener('scroll', handleScroll);
-    socket.on('scroll', handleReceivedScroll);
-
-    // Initialize socket connection
-    fetch('/api/socket');
+    eventSourceRef.current.addEventListener('message', handleReceivedScroll);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      socket.off('scroll', handleReceivedScroll);
-      socket.disconnect();
+      if (eventSourceRef.current) {
+        eventSourceRef.current.removeEventListener('message', handleReceivedScroll);
+        eventSourceRef.current.close();
+      }
     };
   }, []);
 
