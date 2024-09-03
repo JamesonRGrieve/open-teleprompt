@@ -1,33 +1,48 @@
 'use client';
-import { Typography } from '@mui/material';
+import { Box, IconButton, Typography } from '@mui/material';
 import axios from 'axios';
 import { getCookie } from 'cookies-next';
 import React from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
+import { GoogleDoc } from './api/v1/google/GoogleConnector';
+import { ArrowBack } from '@mui/icons-material';
 
 export type TeleprompterProps = {
-  documentID: string;
+  document: GoogleDoc;
+  setSelectedDocument: any;
 };
 
-export default function DocumentList({ documentID }: TeleprompterProps) {
-  const { data, isLoading, error } = useSWR(`/docs/${documentID}`, async () => {
-    return (
-      await axios.get(`${process.env.NEXT_PUBLIC_AUTH_SERVER}/v1/google/docs?id=${documentID}`, {
-        headers: {
-          Authorization: getCookie('jwt'),
-        },
-      })
-    ).data;
+export default function Teleprompter({ document, setSelectedDocument }: TeleprompterProps) {
+  const { data, isLoading, error } = useSWR(`/docs/${document.id}`, async () => {
+    return document
+      ? (
+          await axios.get(`${process.env.NEXT_PUBLIC_AUTH_SERVER}/v1/google/docs?id=${document.id}`, {
+            headers: {
+              Authorization: getCookie('jwt'),
+            },
+          })
+        ).data
+      : null;
   });
   return (
-    <>
-      <Typography variant='h1'>{documentID}</Typography>
+    <Box px='14rem'>
+      <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
+        {' '}
+        <IconButton
+          onClick={() => {
+            setSelectedDocument(null);
+          }}
+        >
+          <ArrowBack />
+        </IconButton>
+        {document.name}
+      </Typography>
       {error ? (
         <Typography variant='body1'>{error.message}</Typography>
       ) : (
         <MarkdownBlock content={isLoading ? 'Loading document...' : data} />
       )}
-    </>
+    </Box>
   );
 }
