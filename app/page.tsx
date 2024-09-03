@@ -9,7 +9,7 @@ export default function Home() {
   const [documents, setDocuments] = useState([]);
   const [selectedDocument, setSelectedDocument] = useState(null);
   return (
-    <Box display='flex' flexDirection='column' alignItems='center'>
+    <Box position='absolute' top='0' left='0' right='0' bottom='0' display='flex' flexDirection='column' alignItems='center'>
       {!selectedDocument && (
         <>
           <Typography variant='h1' my='1rem'>
@@ -39,7 +39,7 @@ export default function Home() {
           )}
         </>
       )}
-      {selectedDocument && <Teleprompter document={selectedDocument} setSelectedDocument={setSelectedDocument} />}
+      {selectedDocument && <Teleprompter googleDoc={selectedDocument} setSelectedDocument={setSelectedDocument} />}
     </Box>
   );
 }

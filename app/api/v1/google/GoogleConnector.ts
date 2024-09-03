@@ -120,7 +120,7 @@ export class GoogleOAuth {
           },
         })
         .catch((error) => error.response)
-    ).data;
+    )?.data;
     return documentBody;
   }
 

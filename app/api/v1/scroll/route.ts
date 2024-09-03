@@ -18,12 +18,15 @@ export async function GET(request) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         },
       };
-      newClient.sendMessage(true);
+      newClient.sendMessage(!clients[user.id] || clients[user.id].length === 0);
       clients[user.id] = [...(clients[user.id] ? clients[user.id] : []), newClient];
     },
     cancel(reason) {
       console.log(this);
       clients[user.id] = [...clients[user.id].filter((session) => session.stream !== this)];
+      if (clients[user.id].length === 1) {
+        clients[user.id][0].sendMessage(true);
+      }
       console.log(`Connection closed for user ${user.email}, total remaining: ${clients[user.id].length}.`);
       console.log(`Total remaining active connections: ${Object.values(clients).flat().length}`);
     },

@@ -2,29 +2,28 @@
 import { Box, IconButton, Typography } from '@mui/material';
 import axios from 'axios';
 import { getCookie } from 'cookies-next';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
 import { ArrowBack } from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
 export type TeleprompterProps = {
-  document: GoogleDoc;
+  googleDoc: GoogleDoc;
   setSelectedDocument: any;
 };
 
-export default function Teleprompter({ document, setSelectedDocument }: TeleprompterProps) {
+export default function Teleprompter({ googleDoc, setSelectedDocument }: TeleprompterProps) {
   const eventSourceRef = useRef<EventSource | null>(null);
+  const mainRef = useRef(null);
+  const [mainWindow, setMainWindow] = useState<Boolean>(false);
 
-  useEffect(() => {
-    eventSourceRef.current = new EventSourcePolyfill('/api/v1/scroll', {
-      headers: {
-        Authorization: getCookie('jwt'),
-      },
-    });
-
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
+  const handleInputScroll = useCallback(() => {
+    console.log('Main Window?: ', mainWindow);
+    if (mainWindow) {
+      const scrollPosition = mainRef.current.scrollTop;
+      console.log(mainRef.current);
+      console.log('Scrolled to ', scrollPosition);
       fetch('/api/v1/scroll', {
         method: 'POST',
         headers: {
@@ -33,30 +32,49 @@ export default function Teleprompter({ document, setSelectedDocument }: Teleprom
         },
         body: JSON.stringify({ position: scrollPosition }),
       });
-    };
-
-    const handleReceivedScroll = (event: MessageEvent) => {
+    }
+  }, [mainWindow, mainRef]);
+  const handleReceivedScroll = useCallback(
+    (event: MessageEvent) => {
       const data = JSON.parse(event.data);
+      console.log(mainRef.current);
       console.log('Received update: ', data);
-      window.scrollTo(0, data.position);
-    };
-
-    window.addEventListener('scroll', handleScroll);
+      if (data === true || data === false) {
+        console.log('Setting main window to ', data);
+        setMainWindow(data);
+      } else {
+        console.log('Setting scroll position to ', Number(data.position));
+        mainRef.current.scrollTo(0, Number(data.position));
+        if (data.selectedDocument) {
+          setSelectedDocument(data.selectedDocument);
+        }
+      }
+    },
+    [mainRef, setSelectedDocument, setMainWindow],
+  );
+  useEffect(() => {
+    mainRef.current = document.querySelector('main');
+    console.log(mainRef.current);
+    mainRef.current.addEventListener('scroll', handleInputScroll);
+    eventSourceRef.current = new EventSourcePolyfill('/api/v1/scroll', {
+      headers: {
+        Authorization: getCookie('jwt'),
+      },
+    });
     eventSourceRef.current.addEventListener('message', handleReceivedScroll);
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      mainRef.current.removeEventListener('scroll', handleInputScroll);
       if (eventSourceRef.current) {
         eventSourceRef.current.removeEventListener('message', handleReceivedScroll);
         eventSourceRef.current.close();
       }
     };
   }, []);
-
-  const { data, isLoading, error } = useSWR(`/docs/${document.id}`, async () => {
-    return document
+  const { data, isLoading, error } = useSWR(`/docs/${googleDoc.id}`, async () => {
+    return googleDoc
       ? (
-          await axios.get(`${process.env.NEXT_PUBLIC_AUTH_SERVER}/v1/google/docs?id=${document.id}`, {
+          await axios.get(`${process.env.NEXT_PUBLIC_AUTH_SERVER}/v1/google/docs?id=${googleDoc.id}`, {
             headers: {
               Authorization: getCookie('jwt'),
             },
@@ -67,7 +85,6 @@ export default function Teleprompter({ document, setSelectedDocument }: Teleprom
   return (
     <Box px='14rem'>
       <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
-        {' '}
         <IconButton
           onClick={() => {
             setSelectedDocument(null);
@@ -75,12 +92,12 @@ export default function Teleprompter({ document, setSelectedDocument }: Teleprom
         >
           <ArrowBack />
         </IconButton>
-        {document.name}
+        {googleDoc.name} - {mainWindow ? 'Main Window' : 'Follower Window'}
       </Typography>
       {error ? (
         <Typography variant='body1'>{error.message}</Typography>
       ) : (
-        <MarkdownBlock content={isLoading ? 'Loading document...' : data} />
+        <MarkdownBlock content={isLoading ? 'Loading googleDoc...' : data} />
       )}
     </Box>
   );
