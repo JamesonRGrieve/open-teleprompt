@@ -8,7 +8,6 @@ import theme from './theme';
 import Head from 'jrgcomponents/Head';
 import React, { ReactNode } from 'react';
 import { Box, Typography } from '@mui/material';
-import { ScrollSync } from './ScrollSync';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {

@@ -49,6 +49,7 @@
     "axios": "^1.7.4",
     "clipboard-copy": "^4.0.1",
     "cookies-next": "^4.2.1",
+    "event-source-polyfill": "^1.0.31",
     "google-auth-library": "^9.14.0",
     "jrgcomponents": "^0.0.179",
     "jsonwebtoken": "^9.0.2",
