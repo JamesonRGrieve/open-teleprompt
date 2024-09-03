@@ -2,7 +2,8 @@
   "name": "open-teleprompt",
   "version": "0.0.1",
   "scripts": {
-    "dev": "rm -rf ./.next && rm -rf ./prisma/oauth2.db && npx prisma generate && npx prisma db push && next dev -p 6969",
+    "db": "rm -rf ./prisma/oauth2.db && npx prisma generate && npx prisma db push",
+    "dev": "rm -rf ./.next && next dev -p 6969",
     "build": "rm -rf ./.next && next build",
     "compile": "tsc --jsx react-jsx --project tsconfig.compile.json",
     "start": "next start -p 6969",
@@ -36,6 +37,7 @@
     "@": "."
   },
   "dependencies": {
+    "@agixt/interactive": "^0.1.8",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^5.16.7",
