@@ -7,6 +7,7 @@ import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
 import { ArrowBack } from '@mui/icons-material';
+import { ScrollSync } from './ScrollSync';
 
 export type TeleprompterProps = {
   document: GoogleDoc;
@@ -26,23 +27,26 @@ export default function Teleprompter({ document, setSelectedDocument }: Teleprom
       : null;
   });
   return (
-    <Box px='14rem'>
-      <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
-        {' '}
-        <IconButton
-          onClick={() => {
-            setSelectedDocument(null);
-          }}
-        >
-          <ArrowBack />
-        </IconButton>
-        {document.name}
-      </Typography>
-      {error ? (
-        <Typography variant='body1'>{error.message}</Typography>
-      ) : (
-        <MarkdownBlock content={isLoading ? 'Loading document...' : data} />
-      )}
-    </Box>
+    <>
+      <Box px='14rem'>
+        <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
+          {' '}
+          <IconButton
+            onClick={() => {
+              setSelectedDocument(null);
+            }}
+          >
+            <ArrowBack />
+          </IconButton>
+          {document.name}
+        </Typography>
+        {error ? (
+          <Typography variant='body1'>{error.message}</Typography>
+        ) : (
+          <MarkdownBlock content={isLoading ? 'Loading document...' : data} />
+        )}
+      </Box>
+      <ScrollSync />
+    </>
   );
 }
