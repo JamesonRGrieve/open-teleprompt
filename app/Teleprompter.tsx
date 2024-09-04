@@ -1,5 +1,5 @@
 'use client';
-import { Box, IconButton, Slider, Stack, Typography } from '@mui/material';
+import { Box, Button, IconButton, Slider, Stack, Typography } from '@mui/material';
 import axios from 'axios';
 import { getCookie } from 'cookies-next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -8,6 +8,7 @@ import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
 import { ArrowBack, KeyboardArrowRight, KeyboardDoubleArrowRight, PlayArrow, StopCircle } from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
+import { v4 as uuidv4 } from 'uuid';
 
 export type TeleprompterProps = {
   googleDoc: GoogleDoc;
@@ -17,10 +18,12 @@ export type TeleprompterProps = {
 export default function Teleprompter({ googleDoc, setSelectedDocument }: TeleprompterProps) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const mainRef = useRef(null);
+  const [clientID, setClientID] = useState<String>(uuidv4());
   const [mainWindow, setMainWindow] = useState<Boolean>(false);
   const [autoScrolling, setAutoScrolling] = useState<Boolean>(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<Number>(5);
   const playingIntervalRef = useRef<number | null>(null);
+  const heartbeatIntervalRef = useRef<number | null>(null);
   const handleInputScroll = useCallback(() => {
     if (mainWindow) {
       console.log('Sending scroll request to: ', mainRef.current.scrollTop);
@@ -31,18 +34,36 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
           'Content-Type': 'application/json',
           Authorization: getCookie('jwt'),
         },
-        body: JSON.stringify({ position: scrollPosition }),
+        body: JSON.stringify({ clientID: clientID, position: scrollPosition }),
       });
     }
   }, [mainWindow]);
-
+  useEffect(() => {
+    heartbeatIntervalRef.current = setInterval(() => {
+      fetch('/api/v1/scroll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: getCookie('jwt'),
+        },
+        body: JSON.stringify({ clientID: clientID }),
+      });
+    }, 5000) as unknown as number;
+    return () => {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    console.log('Main Window Status Updated to: ', mainWindow);
+  }, [mainWindow]);
   const handleReceivedScroll = useCallback(
     (event: MessageEvent) => {
       console.log('Received scroll request: ', event.data);
       const data = JSON.parse(event.data);
-      if (typeof data === 'boolean') {
-        console.log('Updating role to ', event.data === 'true' ? 'main' : 'follower');
-        setMainWindow(() => data); // Use functional update
+      if (data.main) {
+        console.log('Updating role to ', data.main === clientID ? 'main' : 'follower');
+        setMainWindow(data.main === clientID);
       } else {
         if (!mainWindow) {
           console.log('As a follower, scrolling to position...');
@@ -53,7 +74,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         }
       }
     },
-    [setSelectedDocument],
+    [setSelectedDocument, mainWindow],
   );
 
   const handleKillInterval = useCallback(() => {
@@ -78,7 +99,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
     mainRef.current = document.querySelector('main');
 
     mainRef.current.addEventListener('scroll', handleInputScroll);
-    eventSourceRef.current = new EventSourcePolyfill('/api/v1/scroll', {
+    eventSourceRef.current = new EventSourcePolyfill(`/api/v1/scroll?clientID=${clientID}`, {
       headers: {
         Authorization: getCookie('jwt'),
       },
@@ -145,8 +166,23 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         <Typography variant='caption' textAlign='center' width='100%'>
           Control Panel
         </Typography>
-
-        {!autoScrolling ? (
+        {!mainWindow ? (
+          <Button
+            variant='contained'
+            onClick={() => {
+              fetch('/api/v1/scroll', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: getCookie('jwt'),
+                },
+                body: JSON.stringify({ clientID: clientID, main: clientID }),
+              });
+            }}
+          >
+            Assume Control
+          </Button>
+        ) : !autoScrolling ? (
           <>
             <IconButton
               onClick={() => {
