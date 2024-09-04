@@ -51,17 +51,15 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const handleKillInterval = useCallback(() => {
     if (mainWindow) {
       clearInterval(playingInterval);
-      setPlayingInterval(null);
+      //setPlayingInterval(null);
     }
   }, [mainWindow, playingInterval, setPlayingInterval]);
   const handleInterval = useCallback(() => {
-    if (!playingInterval) {
-      const currentScroll = mainRef.current.scrollTop;
-      mainRef.current.scrollTo(0, Number(mainRef.current.scrollTop + 30));
-      if (mainRef.current.scrollTop == currentScroll) {
-        console.log('Hit bottom, killing interval: ', playingInterval);
-        handleKillInterval();
-      }
+    const currentScroll = mainRef.current.scrollTop;
+    mainRef.current.scrollTo(0, Number(mainRef.current.scrollTop + 30));
+    if (mainRef.current.scrollTop == currentScroll) {
+      console.log('Hit bottom, killing interval: ', playingInterval);
+      handleKillInterval();
     }
   }, [mainRef, playingInterval, handleKillInterval]);
   useEffect(() => {
@@ -126,7 +124,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
           {!playingInterval && (
             <IconButton
               onClick={() => {
-                if (mainWindow) {
+                if (mainWindow && !playingInterval) {
                   const interval = setInterval(handleInterval, 500);
                   console.log('Interval created: ', interval);
                   setPlayingInterval(interval);
