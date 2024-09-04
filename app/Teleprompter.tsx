@@ -18,7 +18,8 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const eventSourceRef = useRef<EventSource | null>(null);
   const mainRef = useRef(null);
   const [mainWindow, setMainWindow] = useState<Boolean>(false);
-  const [playingInterval, setPlayingInterval] = useState(null);
+  const [autoScrolling, setAutoScrolling] = useState<Boolean>(false);
+  const playingIntervalRef = useRef<number | null>(null);
   const handleInputScroll = useCallback(() => {
     if (mainWindow) {
       const scrollPosition = mainRef.current.scrollTop;
@@ -49,19 +50,23 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   );
 
   const handleKillInterval = useCallback(() => {
-    if (mainWindow) {
-      clearInterval(playingInterval);
-      //setPlayingInterval(null);
+    console.log('Killing interval...', playingIntervalRef);
+
+    if (mainWindow && playingIntervalRef.current !== null) {
+      setAutoScrolling(false);
+      clearInterval(playingIntervalRef.current);
+      playingIntervalRef.current = null;
     }
-  }, [mainWindow, playingInterval, setPlayingInterval]);
+  }, [mainWindow]);
   const handleInterval = useCallback(() => {
+    console.log('Recalculating handleInterval...', mainRef, playingIntervalRef.current);
     const currentScroll = mainRef.current.scrollTop;
     mainRef.current.scrollTo(0, Number(mainRef.current.scrollTop + 30));
     if (mainRef.current.scrollTop == currentScroll) {
-      console.log('Hit bottom, killing interval: ', playingInterval);
+      console.log('Hit bottom, killing interval: ', playingIntervalRef.current);
       handleKillInterval();
     }
-  }, [mainRef, playingInterval, handleKillInterval]);
+  }, [mainRef, mainWindow]);
   useEffect(() => {
     mainRef.current = document.querySelector('main');
 
@@ -79,7 +84,8 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         eventSourceRef.current.removeEventListener('message', handleReceivedScroll);
         eventSourceRef.current.close();
       }
-      clearInterval(playingInterval);
+      clearInterval(playingIntervalRef.current);
+      playingIntervalRef.current = null;
     };
   }, [handleInputScroll, handleReceivedScroll]);
 
@@ -95,8 +101,8 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
       : null;
   });
   useEffect(() => {
-    console.log(playingInterval);
-  }, [playingInterval]);
+    console.log(playingIntervalRef);
+  }, [playingIntervalRef]);
   return (
     <>
       <Box px='14rem'>
@@ -111,9 +117,12 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
           {googleDoc.name} - {mainWindow ? 'Main Window' : 'Follower Window'}
         </Typography>
         {error ? (
-          <Typography variant='body1'>{error.message}</Typography>
+          <>
+            <Typography variant='body1'>Unable to load document from Google, an error occurred.</Typography>
+            <Typography variant='body1'>{error.message}</Typography>
+          </>
         ) : (
-          <MarkdownBlock content={isLoading ? 'Loading googleDoc...' : data} />
+          <MarkdownBlock content={isLoading ? 'Loading Document from Google...' : data} />
         )}
       </Box>
       <Box width='10rem' height='6rem' position='fixed' top='6rem' left='2rem'>
@@ -121,20 +130,20 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
           Control Panel
         </Typography>
         <Box display='flex' justifyContent='center' gap='0.5rem'>
-          {!playingInterval && (
+          {!autoScrolling ? (
             <IconButton
               onClick={() => {
-                if (mainWindow && !playingInterval) {
+                if (mainWindow && playingIntervalRef.current === null) {
+                  setAutoScrolling(true);
                   const interval = setInterval(handleInterval, 500);
                   console.log('Interval created: ', interval);
-                  setPlayingInterval(interval);
+                  playingIntervalRef.current = interval as unknown as number;
                 }
               }}
             >
               <PlayArrow />
             </IconButton>
-          )}
-          {playingInterval && (
+          ) : (
             <IconButton onClick={handleKillInterval}>
               <StopCircle />
             </IconButton>
