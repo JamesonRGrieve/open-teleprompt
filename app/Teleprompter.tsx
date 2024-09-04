@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
-import { ArrowBack, PlayArrow } from '@mui/icons-material';
+import { ArrowBack, PlayArrow, StopCircle } from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
 
 export type TeleprompterProps = {
@@ -18,7 +18,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const eventSourceRef = useRef<EventSource | null>(null);
   const mainRef = useRef(null);
   const [mainWindow, setMainWindow] = useState<Boolean>(false);
-
+  const [playingInterval, setPlayingInterval] = useState(null);
   const handleInputScroll = useCallback(() => {
     if (mainWindow) {
       const scrollPosition = mainRef.current.scrollTop;
@@ -48,6 +48,22 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
     [setSelectedDocument],
   );
 
+  const handleKillInterval = useCallback(() => {
+    if (mainWindow) {
+      clearInterval(playingInterval);
+      setPlayingInterval(null);
+    }
+  }, [mainWindow, playingInterval, setPlayingInterval]);
+  const handleInterval = useCallback(() => {
+    if (!playingInterval) {
+      const currentScroll = mainRef.current.scrollTop;
+      mainRef.current.scrollTo(0, Number(mainRef.current.scrollTop + 30));
+      if (mainRef.current.scrollTop == currentScroll) {
+        console.log('Hit bottom, killing interval: ', playingInterval);
+        handleKillInterval();
+      }
+    }
+  }, [mainRef, playingInterval, handleKillInterval]);
   useEffect(() => {
     mainRef.current = document.querySelector('main');
 
@@ -65,6 +81,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         eventSourceRef.current.removeEventListener('message', handleReceivedScroll);
         eventSourceRef.current.close();
       }
+      clearInterval(playingInterval);
     };
   }, [handleInputScroll, handleReceivedScroll]);
 
@@ -79,7 +96,9 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         ).data
       : null;
   });
-
+  useEffect(() => {
+    console.log(playingInterval);
+  }, [playingInterval]);
   return (
     <>
       <Box px='14rem'>
@@ -100,13 +119,28 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         )}
       </Box>
       <Box width='10rem' height='6rem' position='fixed' top='6rem' left='2rem'>
-        <Typography variant='caption' textAlign='center'>
+        <Typography variant='caption' textAlign='center' width='100%'>
           Control Panel
         </Typography>
         <Box display='flex' justifyContent='center' gap='0.5rem'>
-          <IconButton>
-            <PlayArrow />
-          </IconButton>
+          {!playingInterval && (
+            <IconButton
+              onClick={() => {
+                if (mainWindow) {
+                  const interval = setInterval(handleInterval, 500);
+                  console.log('Interval created: ', interval);
+                  setPlayingInterval(interval);
+                }
+              }}
+            >
+              <PlayArrow />
+            </IconButton>
+          )}
+          {playingInterval && (
+            <IconButton onClick={handleKillInterval}>
+              <StopCircle />
+            </IconButton>
+          )}
         </Box>
       </Box>
     </>
