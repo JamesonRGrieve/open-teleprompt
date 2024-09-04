@@ -1,12 +1,12 @@
 'use client';
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, IconButton, Slider, Stack, Typography } from '@mui/material';
 import axios from 'axios';
 import { getCookie } from 'cookies-next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
-import { ArrowBack, PlayArrow, StopCircle } from '@mui/icons-material';
+import { ArrowBack, KeyboardArrowRight, KeyboardDoubleArrowRight, PlayArrow, StopCircle } from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
 
 export type TeleprompterProps = {
@@ -19,6 +19,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const mainRef = useRef(null);
   const [mainWindow, setMainWindow] = useState<Boolean>(false);
   const [autoScrolling, setAutoScrolling] = useState<Boolean>(false);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState<Number>(5);
   const playingIntervalRef = useRef<number | null>(null);
   const handleInputScroll = useCallback(() => {
     if (mainWindow) {
@@ -61,12 +62,12 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const handleInterval = useCallback(() => {
     console.log('Recalculating handleInterval...', mainRef, playingIntervalRef.current);
     const currentScroll = mainRef.current.scrollTop;
-    mainRef.current.scrollTo(0, Number(mainRef.current.scrollTop + 30));
+    mainRef.current.scrollTo(0, Number(mainRef.current.scrollTop + autoScrollSpeed));
     if (mainRef.current.scrollTop == currentScroll) {
       console.log('Hit bottom, killing interval: ', playingIntervalRef.current);
       handleKillInterval();
     }
-  }, [mainRef, mainWindow]);
+  }, [mainRef, mainWindow, autoScrollSpeed]);
   useEffect(() => {
     mainRef.current = document.querySelector('main');
 
@@ -125,12 +126,22 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
           <MarkdownBlock content={isLoading ? 'Loading Document from Google...' : data} />
         )}
       </Box>
-      <Box width='10rem' height='6rem' position='fixed' top='6rem' left='2rem'>
+      <Box
+        width='10rem'
+        height='6rem'
+        position='fixed'
+        display='flex'
+        flexDirection='column'
+        alignItems='center'
+        top='6rem'
+        left='2rem'
+      >
         <Typography variant='caption' textAlign='center' width='100%'>
           Control Panel
         </Typography>
-        <Box display='flex' justifyContent='center' gap='0.5rem'>
-          {!autoScrolling ? (
+
+        {!autoScrolling ? (
+          <>
             <IconButton
               onClick={() => {
                 if (mainWindow && playingIntervalRef.current === null) {
@@ -143,12 +154,27 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
             >
               <PlayArrow />
             </IconButton>
-          ) : (
-            <IconButton onClick={handleKillInterval}>
-              <StopCircle />
-            </IconButton>
-          )}
-        </Box>
+            <Stack spacing={2} direction='row' sx={{ alignItems: 'center', width: '100%' }}>
+              <KeyboardArrowRight />
+              <Slider
+                aria-label='Volume'
+                step={5}
+                shiftStep={10}
+                marks
+                min={5}
+                max={50}
+                valueLabelDisplay='auto'
+                value={autoScrollSpeed as number | number[]}
+                onChange={(event, newValue) => setAutoScrollSpeed(newValue as number)}
+              />
+              <KeyboardDoubleArrowRight />
+            </Stack>
+          </>
+        ) : (
+          <IconButton onClick={handleKillInterval}>
+            <StopCircle />
+          </IconButton>
+        )}
       </Box>
     </>
   );
