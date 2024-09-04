@@ -41,9 +41,11 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
       console.log('Received scroll request: ', event.data);
       const data = JSON.parse(event.data);
       if (typeof data === 'boolean') {
+        console.log('Updating role to ', event.data === 'true' ? 'main' : 'follower');
         setMainWindow(() => data); // Use functional update
       } else {
         if (!mainWindow) {
+          console.log('As a follower, scrolling to position...');
           mainRef.current.scrollTo(0, Number(data.position));
           if (data.selectedDocument) {
             setSelectedDocument(data.selectedDocument);
