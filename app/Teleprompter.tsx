@@ -41,9 +41,11 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
       if (typeof data === 'boolean') {
         setMainWindow(() => data); // Use functional update
       } else {
-        mainRef.current.scrollTo(0, Number(data.position));
-        if (data.selectedDocument) {
-          setSelectedDocument(data.selectedDocument);
+        if (!mainWindow) {
+          mainRef.current.scrollTo(0, Number(data.position));
+          if (data.selectedDocument) {
+            setSelectedDocument(data.selectedDocument);
+          }
         }
       }
     },
