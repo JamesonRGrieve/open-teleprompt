@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
-import { ArrowBack } from '@mui/icons-material';
+import { ArrowBack, PlayArrow } from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
 
 export type TeleprompterProps = {
@@ -81,22 +81,34 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   });
 
   return (
-    <Box px='14rem'>
-      <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
-        <IconButton
-          onClick={() => {
-            setSelectedDocument(null);
-          }}
-        >
-          <ArrowBack />
-        </IconButton>
-        {googleDoc.name} - {mainWindow ? 'Main Window' : 'Follower Window'}
-      </Typography>
-      {error ? (
-        <Typography variant='body1'>{error.message}</Typography>
-      ) : (
-        <MarkdownBlock content={isLoading ? 'Loading googleDoc...' : data} />
-      )}
-    </Box>
+    <>
+      <Box px='14rem'>
+        <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
+          <IconButton
+            onClick={() => {
+              setSelectedDocument(null);
+            }}
+          >
+            <ArrowBack />
+          </IconButton>
+          {googleDoc.name} - {mainWindow ? 'Main Window' : 'Follower Window'}
+        </Typography>
+        {error ? (
+          <Typography variant='body1'>{error.message}</Typography>
+        ) : (
+          <MarkdownBlock content={isLoading ? 'Loading googleDoc...' : data} />
+        )}
+      </Box>
+      <Box width='10rem' height='6rem' position='fixed' top='6rem' left='2rem'>
+        <Typography variant='caption' textAlign='center'>
+          Control Panel
+        </Typography>
+        <Box display='flex' justifyContent='center' gap='0.5rem'>
+          <IconButton>
+            <PlayArrow />
+          </IconButton>
+        </Box>
+      </Box>
+    </>
   );
 }

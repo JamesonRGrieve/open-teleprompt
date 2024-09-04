@@ -15,7 +15,6 @@ export interface GoogleDoc {
   starred: boolean;
   modifiedTime: string;
   size: number;
-  exportLinks: { [key: string]: string };
 }
 
 export class GoogleOAuth {
