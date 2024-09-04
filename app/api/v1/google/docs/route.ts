@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     const documentBody = await google.getUserDocumentMarkdown(user.email, request.nextUrl.searchParams.get('id'));
 
-    console.log(documentBody);
+    //console.log(documentBody);
 
     return NextResponse.json(documentBody);
   } catch (error) {

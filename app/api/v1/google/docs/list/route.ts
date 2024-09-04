@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     const docs = await google.listUserDocuments(user.email);
 
-    console.log(docs);
+    //console.log(docs);
 
     return NextResponse.json(docs);
   } catch (error) {

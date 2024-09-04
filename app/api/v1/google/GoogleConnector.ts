@@ -66,7 +66,7 @@ export class GoogleOAuth {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       .catch((error) => error.response);
-    console.log('Got User Data: ', response.data);
+    //console.log('Got User Data: ', response.data);
     return {
       given_name: response.data.names[0].givenName,
       family_name: response.data.names[0].familyName,
@@ -95,7 +95,7 @@ export class GoogleOAuth {
         .catch((error) => error.response)
     ).data.files;
     for (const file of files) {
-      console.log(file);
+      //console.log(file);
     }
     return files;
   }

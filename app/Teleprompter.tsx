@@ -6,7 +6,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
 import { GoogleDoc } from './api/v1/google/GoogleConnector';
-import { ArrowBack, KeyboardArrowRight, KeyboardDoubleArrowRight, PlayArrow, StopCircle } from '@mui/icons-material';
+import {
+  ArrowBack,
+  KeyboardArrowRight,
+  KeyboardDoubleArrowRight,
+  PlayArrow,
+  StopCircle,
+  SwapHoriz,
+  SwapHorizOutlined,
+  SwapVert,
+  SwapVertOutlined,
+} from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,6 +32,8 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const [mainWindow, setMainWindow] = useState<Boolean>(false);
   const [autoScrolling, setAutoScrolling] = useState<Boolean>(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<Number>(5);
+  const [flipVertical, setFlipVertical] = useState<Boolean>(false);
+  const [flipHorizontal, setFlipHorizontal] = useState<Boolean>(false);
   const playingIntervalRef = useRef<number | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
   const handleInputScroll = useCallback(() => {
@@ -115,7 +127,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
       clearInterval(playingIntervalRef.current);
       playingIntervalRef.current = null;
     };
-  }, [handleInputScroll, handleReceivedScroll]);
+  }, []);
 
   const { data, isLoading, error } = useSWR(`/docs/${googleDoc.id}`, async () => {
     return googleDoc
@@ -150,7 +162,9 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
             <Typography variant='body1'>{error.message}</Typography>
           </>
         ) : (
-          <MarkdownBlock content={isLoading ? 'Loading Document from Google...' : data} />
+          <Box sx={{ transform: `${flipHorizontal ? '-1' : '1'} ${flipVertical ? '-1' : '1'}` }}>
+            <MarkdownBlock content={isLoading ? 'Loading Document from Google...' : data} />
+          </Box>
         )}
       </Box>
       <Box
@@ -195,6 +209,24 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
               }}
             >
               <PlayArrow />
+            </IconButton>
+            <IconButton
+              onClick={() => {
+                if (mainWindow) {
+                  setFlipVertical((old) => !old);
+                }
+              }}
+            >
+              {flipVertical ? <SwapVertOutlined /> : <SwapVert />}
+            </IconButton>
+            <IconButton
+              onClick={() => {
+                if (mainWindow) {
+                  setFlipHorizontal((old) => !old);
+                }
+              }}
+            >
+              {flipHorizontal ? <SwapHorizOutlined /> : <SwapHoriz />}
             </IconButton>
             <Stack spacing={2} direction='row' sx={{ alignItems: 'center', width: '100%' }}>
               <KeyboardArrowRight />
