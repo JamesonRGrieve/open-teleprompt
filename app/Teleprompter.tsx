@@ -23,6 +23,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
   const playingIntervalRef = useRef<number | null>(null);
   const handleInputScroll = useCallback(() => {
     if (mainWindow) {
+      console.log('Sending scroll request to: ', mainRef.current.scrollTop);
       const scrollPosition = mainRef.current.scrollTop;
       fetch('/api/v1/scroll', {
         method: 'POST',
@@ -37,6 +38,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
 
   const handleReceivedScroll = useCallback(
     (event: MessageEvent) => {
+      console.log('Received scroll request: ', event.data);
       const data = JSON.parse(event.data);
       if (typeof data === 'boolean') {
         setMainWindow(() => data); // Use functional update
