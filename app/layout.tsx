@@ -6,6 +6,7 @@ import 'jrgcomponents/Style/Global';
 import AppWrapper from 'jrgcomponents/AppWrapper/Wrapper/Themed';
 import Head from 'jrgcomponents/Head';
 import React, { ReactNode } from 'react';
+import theme from './theme';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
