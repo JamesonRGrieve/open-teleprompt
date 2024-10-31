@@ -1,44 +1,36 @@
-'use client';
-import { Box, Button, IconButton, Slider, Stack, Typography } from '@mui/material';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { getCookie } from 'cookies-next';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import MarkdownBlock from '@agixt/interactive/MarkdownBlock';
-import { GoogleDoc } from './api/v1/google/GoogleConnector';
-import {
-  ArrowBack,
-  KeyboardArrowRight,
-  KeyboardDoubleArrowRight,
-  PlayArrow,
-  StopCircle,
-  SwapHoriz,
-  SwapHorizOutlined,
-  SwapVert,
-  SwapVertOutlined,
-} from '@mui/icons-material';
 import { EventSourcePolyfill } from 'event-source-polyfill';
 import { v4 as uuidv4 } from 'uuid';
+import { FaArrowLeft, FaPlay, FaStop, FaArrowsAltV, FaArrowsAltH, FaChevronRight, FaAngleDoubleRight } from 'react-icons/fa';
+
+export type GoogleDoc = {
+  id: string;
+  name: string;
+};
 
 export type TeleprompterProps = {
   googleDoc: GoogleDoc;
-  setSelectedDocument: any;
+  setSelectedDocument: (doc: GoogleDoc | null) => void;
 };
 
 export default function Teleprompter({ googleDoc, setSelectedDocument }: TeleprompterProps) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const mainRef = useRef(null);
-  const [clientID, setClientID] = useState<String>(uuidv4());
-  const [mainWindow, setMainWindow] = useState<Boolean>(false);
-  const [autoScrolling, setAutoScrolling] = useState<Boolean>(false);
-  const [autoScrollSpeed, setAutoScrollSpeed] = useState<Number>(5);
-  const [flipVertical, setFlipVertical] = useState<Boolean>(false);
-  const [flipHorizontal, setFlipHorizontal] = useState<Boolean>(false);
+  const [clientID, setClientID] = useState<string>(uuidv4());
+  const [mainWindow, setMainWindow] = useState<boolean>(false);
+  const [autoScrolling, setAutoScrolling] = useState<boolean>(false);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState<number>(5);
+  const [flipVertical, setFlipVertical] = useState<boolean>(false);
+  const [flipHorizontal, setFlipHorizontal] = useState<boolean>(false);
   const playingIntervalRef = useRef<number | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
+
   const handleInputScroll = useCallback(() => {
     if (mainWindow) {
-      console.log('Sending scroll request to: ', mainRef.current.scrollTop);
       const scrollPosition = mainRef.current.scrollTop;
       fetch('/api/v1/scroll', {
         method: 'POST',
@@ -49,7 +41,8 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         body: JSON.stringify({ clientID: clientID, position: scrollPosition }),
       });
     }
-  }, [mainWindow]);
+  }, [mainWindow, clientID]);
+
   useEffect(() => {
     heartbeatIntervalRef.current = setInterval(() => {
       fetch('/api/v1/scroll', {
@@ -65,52 +58,43 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
     };
-  }, []);
-  useEffect(() => {
-    console.log('Main Window Status Updated to: ', mainWindow);
-  }, [mainWindow]);
+  }, [clientID]);
+
   const handleReceivedScroll = useCallback(
     (event: MessageEvent) => {
-      console.log('Received scroll request: ', event.data);
       const data = JSON.parse(event.data);
       if (data.main) {
-        console.log('Updating role to ', data.main === clientID ? 'main' : 'follower');
         setMainWindow(data.main === clientID);
-      } else {
-        if (!mainWindow) {
-          console.log('As a follower, scrolling to position...');
-          mainRef.current.scrollTo(0, Number(data.position));
-          if (data.selectedDocument) {
-            setSelectedDocument(data.selectedDocument);
-          }
+      } else if (!mainWindow) {
+        mainRef.current.scrollTo(0, Number(data.position));
+        if (data.selectedDocument) {
+          setSelectedDocument(data.selectedDocument);
         }
       }
     },
-    [setSelectedDocument, mainWindow],
+    [setSelectedDocument, mainWindow, clientID],
   );
 
   const handleKillInterval = useCallback(() => {
-    console.log('Killing interval...', playingIntervalRef);
-
     if (mainWindow && playingIntervalRef.current !== null) {
       setAutoScrolling(false);
       clearInterval(playingIntervalRef.current);
       playingIntervalRef.current = null;
     }
   }, [mainWindow]);
+
   const handleInterval = useCallback(() => {
-    console.log('Recalculating handleInterval...', mainRef, playingIntervalRef.current);
     const currentScroll = mainRef.current.scrollTop;
     mainRef.current.scrollTo(0, Number(mainRef.current.scrollTop + autoScrollSpeed));
-    if (mainRef.current.scrollTop == currentScroll) {
-      console.log('Hit bottom, killing interval: ', playingIntervalRef.current);
+    if (mainRef.current.scrollTop === currentScroll) {
       handleKillInterval();
     }
-  }, [mainRef, mainWindow, autoScrollSpeed]);
+  }, [mainRef, autoScrollSpeed, handleKillInterval]);
+
   useEffect(() => {
     mainRef.current = document.querySelector('main');
-
     mainRef.current.addEventListener('scroll', handleInputScroll);
+
     eventSourceRef.current = new EventSourcePolyfill(`/api/v1/scroll?clientID=${clientID}`, {
       headers: {
         Authorization: getCookie('jwt'),
@@ -127,7 +111,7 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
       clearInterval(playingIntervalRef.current);
       playingIntervalRef.current = null;
     };
-  }, []);
+  }, [handleInputScroll, handleReceivedScroll, clientID]);
 
   const { data, isLoading, error } = useSWR(`/docs/${googleDoc.id}`, async () => {
     return googleDoc
@@ -140,49 +124,39 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
         ).data
       : null;
   });
-  useEffect(() => {
-    console.log(playingIntervalRef);
-  }, [playingIntervalRef]);
+
   return (
     <>
-      <Box px='14rem'>
-        <Typography variant='h2' display='flex' alignItems='center' justifyContent='center'>
-          <IconButton
-            onClick={() => {
-              setSelectedDocument(null);
+      <div className='px-56'>
+        <h1 className='flex items-center justify-center text-3xl font-bold mb-6'>
+          <button onClick={() => setSelectedDocument(null)} className='p-2 hover:bg-gray-100 rounded-full mr-2'>
+            <FaArrowLeft className='w-6 h-6' />
+          </button>
+          {googleDoc.name} - {mainWindow ? 'Main Window' : 'Follower Window'}
+        </h1>
+
+        {error ? (
+          <div className='space-y-2'>
+            <p className='text-base'>Unable to load document from Google, an error occurred.</p>
+            <p className='text-base text-red-500'>{error.message}</p>
+          </div>
+        ) : (
+          <div
+            style={{
+              transform: `scale(${flipHorizontal ? '-1' : '1'}, ${flipVertical ? '-1' : '1'})`,
             }}
           >
-            <ArrowBack />
-          </IconButton>
-          {googleDoc.name} - {mainWindow ? 'Main Window' : 'Follower Window'}
-        </Typography>
-        {error ? (
-          <>
-            <Typography variant='body1'>Unable to load document from Google, an error occurred.</Typography>
-            <Typography variant='body1'>{error.message}</Typography>
-          </>
-        ) : (
-          <Box sx={{ transform: `${flipHorizontal ? '-1' : '1'} ${flipVertical ? '-1' : '1'}` }}>
             <MarkdownBlock content={isLoading ? 'Loading Document from Google...' : data} />
-          </Box>
+          </div>
         )}
-      </Box>
-      <Box
-        width='10rem'
-        height='6rem'
-        position='fixed'
-        display='flex'
-        flexDirection='column'
-        alignItems='center'
-        top='6rem'
-        left='2rem'
-      >
-        <Typography variant='caption' textAlign='center' width='100%'>
-          Control Panel
-        </Typography>
+      </div>
+
+      <div className='fixed top-24 left-8 w-40 h-24 flex flex-col items-center'>
+        <span className='text-sm text-center w-full mb-2'>Control Panel</span>
+
         {!mainWindow ? (
-          <Button
-            variant='contained'
+          <button
+            className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors'
             onClick={() => {
               fetch('/api/v1/scroll', {
                 method: 'POST',
@@ -195,61 +169,56 @@ export default function Teleprompter({ googleDoc, setSelectedDocument }: Telepro
             }}
           >
             Assume Control
-          </Button>
+          </button>
         ) : !autoScrolling ? (
-          <>
-            <IconButton
-              onClick={() => {
-                if (mainWindow && playingIntervalRef.current === null) {
-                  setAutoScrolling(true);
-                  const interval = setInterval(handleInterval, 500);
-                  console.log('Interval created: ', interval);
-                  playingIntervalRef.current = interval as unknown as number;
-                }
-              }}
-            >
-              <PlayArrow />
-            </IconButton>
-            <IconButton
-              onClick={() => {
-                if (mainWindow) {
-                  setFlipVertical((old) => !old);
-                }
-              }}
-            >
-              {flipVertical ? <SwapVertOutlined /> : <SwapVert />}
-            </IconButton>
-            <IconButton
-              onClick={() => {
-                if (mainWindow) {
-                  setFlipHorizontal((old) => !old);
-                }
-              }}
-            >
-              {flipHorizontal ? <SwapHorizOutlined /> : <SwapHoriz />}
-            </IconButton>
-            <Stack spacing={2} direction='row' sx={{ alignItems: 'center', width: '100%' }}>
-              <KeyboardArrowRight />
-              <Slider
-                aria-label='Volume'
-                step={5}
-                shiftStep={10}
-                marks
-                min={5}
-                max={50}
-                valueLabelDisplay='auto'
-                value={autoScrollSpeed as number | number[]}
-                onChange={(event, newValue) => setAutoScrollSpeed(newValue as number)}
+          <div className='space-y-2 w-full'>
+            <div className='flex justify-center space-x-2'>
+              <button
+                onClick={() => {
+                  if (mainWindow && playingIntervalRef.current === null) {
+                    setAutoScrolling(true);
+                    const interval = setInterval(handleInterval, 500);
+                    playingIntervalRef.current = interval as unknown as number;
+                  }
+                }}
+                className='p-2 hover:bg-gray-100 rounded-full'
+              >
+                <FaPlay className='w-6 h-6' />
+              </button>
+              <button
+                onClick={() => mainWindow && setFlipVertical((old) => !old)}
+                className='p-2 hover:bg-gray-100 rounded-full'
+              >
+                <FaArrowsAltV className={`w-6 h-6 ${flipVertical ? 'text-blue-500' : ''}`} />
+              </button>
+              <button
+                onClick={() => mainWindow && setFlipHorizontal((old) => !old)}
+                className='p-2 hover:bg-gray-100 rounded-full'
+              >
+                <FaArrowsAltH className={`w-6 h-6 ${flipHorizontal ? 'text-blue-500' : ''}`} />
+              </button>
+            </div>
+
+            <div className='flex items-center w-full px-2'>
+              <FaChevronRight className='w-4 h-4 mr-2' />
+              <input
+                type='range'
+                min='5'
+                max='50'
+                step='5'
+                value={autoScrollSpeed}
+                onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
+                className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
               />
-              <KeyboardDoubleArrowRight />
-            </Stack>
-          </>
+              <FaAngleDoubleRight className='w-4 h-4 ml-2' />
+            </div>
+          </div>
         ) : (
-          <IconButton onClick={handleKillInterval}>
-            <StopCircle />
-          </IconButton>
+          <button onClick={handleKillInterval} className='p-2 hover:bg-gray-100 rounded-full'>
+            <FaStop className='w-6 h-6' />
+          </button>
         )}
-      </Box>
+      </div>
     </>
   );
 }

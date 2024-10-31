@@ -4,10 +4,8 @@ import { cookies } from 'next/headers';
 // eslint-disable-next-line import/no-unassigned-import
 import 'jrgcomponents/Style/Global';
 import AppWrapper from 'jrgcomponents/AppWrapper/Wrapper/Themed';
-import theme from './theme';
 import Head from 'jrgcomponents/Head';
 import React, { ReactNode } from 'react';
-import { Box, Typography } from '@mui/material';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -37,11 +35,9 @@ export default function RootLayout({ children }: { children: ReactNode }): React
             footer: {
               components: {
                 center: (
-                  <Box textAlign='center'>
-                    <Typography sx={{ margin: 0 }} variant='caption'>
-                      &copy; Jameson R Grieve 2024
-                    </Typography>
-                  </Box>
+                  <div>
+                    <span>&copy; Jameson R Grieve 2024</span>
+                  </div>
                 ),
               },
             },

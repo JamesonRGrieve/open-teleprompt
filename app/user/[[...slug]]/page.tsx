@@ -1,5 +1,6 @@
 import JRGAuthRouter from 'jrgcomponents/AuthRouter';
-import { Google } from '@mui/icons-material';
+import { FaGoogle } from 'react-icons/fa';
+
 export default function AuthRouter(props) {
   return (
     <JRGAuthRouter
@@ -17,7 +18,7 @@ export default function AuthRouter(props) {
                 params: {
                   access_type: 'offline',
                 },
-                icon: <Google />,
+                icon: <FaGoogle />,
               },
             },
           },

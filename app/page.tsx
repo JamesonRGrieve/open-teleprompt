@@ -1,11 +1,11 @@
 'use client';
 import React, { useState } from 'react';
-import { Box, Button, Typography } from '@mui/material';
 import axios from 'axios';
 import useSWR from 'swr';
 import { getCookie } from 'cookies-next';
 import DocumentList from './DocumentList';
 import Teleprompter from './Teleprompter';
+
 export default function Home() {
   const {
     data: documents,
@@ -20,22 +20,22 @@ export default function Home() {
       })
     ).data;
   });
+
   const [selectedDocument, setSelectedDocument] = useState(null);
+
   return (
-    <Box position='absolute' top='0' left='0' right='0' bottom='0' display='flex' flexDirection='column' alignItems='center'>
+    <div className='absolute inset-0 flex flex-col items-center'>
       {!selectedDocument && (
         <>
-          <Typography variant='h1' my='1rem'>
-            Welcome to OpenTeleprompt
-          </Typography>
+          <h1 className='text-4xl font-bold my-4'>Welcome to OpenTeleprompt</h1>
           {isLoading ? (
-            <Typography variant='body1'>Loading documents...</Typography>
+            <p className='text-base'>Loading documents...</p>
           ) : (
             <DocumentList documents={documents} setSelectedDocument={setSelectedDocument} />
           )}
         </>
       )}
       {selectedDocument && <Teleprompter googleDoc={selectedDocument} setSelectedDocument={setSelectedDocument} />}
-    </Box>
+    </div>
   );
 }
